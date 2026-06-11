@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cetak Barcode — Harmoni</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --green:  #034543;
+            --green2: #055a57;
+            --beige:  #FFFBD5;
+            --beige2: #fff8c0;
+            --white:  #ffffff;
+            --text:   #0f2524;
+            --muted:  #5a7a79;
+            --border: #c8e0de;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Raleway', sans-serif;
+            background: linear-gradient(160deg, #f5faf5 0%, #FFFBD5 50%, #fdf8e8 100%);
+            background-attachment: fixed;
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        header {
+            background: linear-gradient(135deg, #022e2c 0%, #034543 45%, #0a6b68 100%);
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 60px;
+            box-shadow: 0 2px 12px rgba(3,69,67,0.35);
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--beige);
+            letter-spacing: -0.5px;
+        }
+
+        .logo span {
+            color: var(--beige);
+            opacity: 0.6;
+            font-weight: 500;
+            font-size: 14px;
+            margin-left: 10px;
+            letter-spacing: 0;
+        }
+
+        /* ── Tabs ── */
+        .tab-bar {
+            background: linear-gradient(135deg, #022e2c 0%, #034543 45%, #0a6b68 100%);
+            padding: 0 32px;
+            display: flex;
+            gap: 0;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            box-shadow: 0 3px 16px rgba(3,69,67,0.25);
+        }
+
+        .tab {
+            padding: 12px 22px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: 'Raleway', sans-serif;
+            color: rgba(255,251,213,0.55);
+            cursor: pointer;
+            border: none;
+            background: none;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            white-space: nowrap;
+            letter-spacing: 0.2px;
+        }
+
+        .tab:hover { color: var(--beige); }
+
+        .tab.active {
+            color: var(--beige);
+            border-bottom-color: var(--beige);
+        }
+
+        .tab.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .tab-badge {
+            background: rgba(255,251,213,0.2);
+            color: var(--beige);
+            border-radius: 10px;
+            padding: 1px 7px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .tab.active .tab-badge {
+            background: rgba(255,251,213,0.3);
+        }
+
+        /* ── Container ── */
+        .container {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: linear-gradient(160deg, #ffffff 0%, #fdfef9 100%);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 24px rgba(3,69,67,0.10), 0 1px 0 rgba(3,69,67,0.05);
+            border: 1px solid rgba(3,69,67,0.07);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--green);
+            margin-bottom: 6px;
+        }
+
+        .card-sub {
+            font-size: 14px;
+            color: var(--muted);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        /* ── Upload zone ── */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 52px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: linear-gradient(160deg, #fdfef9 0%, #f7fdf8 100%);
+        }
+
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--green);
+            background: linear-gradient(160deg, #edfaf8 0%, #f0faf5 100%);
+            box-shadow: 0 4px 20px rgba(3,69,67,0.08);
+        }
+
+        .upload-zone h2 {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--green);
+            margin: 12px 0 6px;
+        }
+
+        .upload-zone p { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+
+        #file-input, #folder-input { display: none; }
+
+        /* ── Saved banner ── */
+        .saved-banner {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 16px 20px;
+            background: #f0faf9;
+            border: 1.5px solid #86d4ce;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .saved-banner.visible { display: flex; }
+
+        .saved-info { font-size: 14px; color: var(--green); line-height: 1.6; }
+        .saved-info strong { font-weight: 700; }
+        .saved-info small { font-size: 12px; color: var(--muted); }
+
+        .saved-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        /* ── Info box ── */
+        .info-box {
+            margin-top: 20px;
+            padding: 14px 18px;
+            background: #f7fef9;
+            border-radius: 10px;
+            border-left: 3px solid var(--green);
+        }
+
+        .info-box p  { font-size: 13px; color: var(--green); font-weight: 700; margin-bottom: 6px; }
+        .info-box ol { font-size: 13px; color: var(--muted); padding-left: 20px; line-height: 2.1; }
+
+        /* ── Buttons ── */
+        .btn {
+            border: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: 'Raleway', sans-serif;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1;
+            letter-spacing: 0.2px;
+        }
+
+        .btn-primary { background: linear-gradient(135deg, #034543 0%, #0a6b68 100%); color: var(--beige); box-shadow: 0 2px 8px rgba(3,69,67,0.3); }
+        .btn-primary:hover { background: linear-gradient(135deg, #022e2c 0%, #034543 100%); box-shadow: 0 4px 12px rgba(3,69,67,0.4); }
+        .btn-primary:active { transform: scale(0.98); }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--green);
+            border: 1.5px solid var(--green);
+        }
+        .btn-outline:hover { background: #f0faf9; }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--muted);
+            border: 1.5px solid var(--border);
+        }
+        .btn-ghost:hover { background: #f8faf8; }
+
+        .btn-print {
+            background: linear-gradient(135deg, #034543 0%, #0a6b68 100%);
+            color: var(--beige);
+            font-size: 15px;
+            padding: 12px 28px;
+            box-shadow: 0 3px 12px rgba(3,69,67,0.35);
+        }
+        .btn-print:hover { background: linear-gradient(135deg, #022e2c 0%, #034543 100%); box-shadow: 0 5px 18px rgba(3,69,67,0.45); }
+
+        /* ── Column config ── */
+        .col-config {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        @media(max-width:640px) { .col-config { grid-template-columns: 1fr; } }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 7px;
+            color: var(--green);
+        }
+
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Raleway', sans-serif;
+            color: var(--text);
+            background: white;
+            cursor: pointer;
+        }
+
+        .form-group select:focus { outline: none; border-color: var(--green); }
+        .form-hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
+
+        /* ── Table ── */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead tr { background: #f0faf9; }
+        th { padding: 10px 14px; text-align: left; font-weight: 700; color: var(--green); border-bottom: 1px solid var(--border); white-space: nowrap; }
+        td { padding: 9px 14px; border-bottom: 1px solid #f0f8f7; color: var(--text); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:nth-child(even) { background: #fafefe; }
+
+        .action-row { display: flex; justify-content: flex-end; gap: 10px; }
+
+        /* ── Settings panel ── */
+        .settings-panel {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 20px;
+            padding: 14px 18px;
+            background: linear-gradient(135deg, #fffde8 0%, #FFFBD5 100%);
+            border: 1px solid #e0db9a;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: var(--green);
+            box-shadow: 0 1px 6px rgba(180,160,0,0.1);
+        }
+
+        .settings-panel strong { font-weight: 700; margin-right: 4px; }
+
+        .setting-group { display: flex; align-items: center; gap: 8px; }
+        .setting-group label { font-weight: 600; white-space: nowrap; }
+
+        .setting-group input[type="number"] {
+            width: 58px;
+            padding: 6px 8px;
+            border: 1.5px solid #ccc9a0;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: 'Raleway', sans-serif;
+            text-align: center;
+            background: white;
+            color: var(--text);
+        }
+
+        .setting-group input:focus { outline: none; border-color: var(--green); }
+        .setting-divider { width: 1px; height: 28px; background: #d4d09a; }
+
+        /* ── Print tip ── */
+        .print-tip {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 16px;
+            background: #fffbdc;
+            border: 1px solid #e8e4a8;
+            border-radius: 10px;
+            margin-bottom: 18px;
+            font-size: 13px;
+            color: #6b6400;
+            line-height: 1.6;
+        }
+
+        /* ── Action bar ── */
+        .action-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        /* ── Preview header ── */
+        .preview-topbar {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .preview-title { font-size: 18px; font-weight: 700; color: var(--green); }
+        .preview-count { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+        /* ── Labels grid ── */
+        #labels-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            background: #d4d8b8;
+            padding: 4px;
+            border-radius: 8px;
+            width: fit-content;
+        }
+
+        .label-item {
+            width: 180px;
+            height: 98px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 8px 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .label-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #0f172a;
+            text-align: center;
+            text-transform: uppercase;
+            line-height: 1.2;
+            word-break: break-word;
+            max-width: 100%;
+            margin-bottom: 1px;
+            font-family: Arial, sans-serif;
+        }
+
+        .label-barcode { display: flex; justify-content: center; width: 100%; }
+        .label-barcode svg { max-width: 100%; height: auto; }
+
+        .label-price {
+            font-size: 10px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-top: 1px;
+            font-family: Arial, sans-serif;
+        }
+
+        .label-error { font-size: 10px; color: #ef4444; text-align: center; }
+
+        /* ── Tab panels ── */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ── Product selection ── */
+        .select-toolbar {
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 10px; margin-bottom: 14px;
+        }
+
+        .search-box {
+            display: flex; align-items: center; gap: 0;
+            border: 1.5px solid var(--border); border-radius: 8px;
+            background: white; overflow: hidden; flex: 1; max-width: 400px;
+        }
+
+        .search-box svg { margin: 0 10px; flex-shrink: 0; }
+
+        .search-box input {
+            border: none; outline: none; padding: 9px 12px 9px 0;
+            font-size: 14px; font-family: 'Raleway', sans-serif;
+            color: var(--text); width: 100%; background: transparent;
+        }
+
+        .search-box input::placeholder { color: #aac4c2; }
+        .search-box:focus-within { border-color: var(--green); }
+
+        .select-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+        .select-count {
+            font-size: 13px; font-weight: 700; color: var(--green);
+            background: #e8f7f5; padding: 5px 12px; border-radius: 20px;
+            white-space: nowrap;
+        }
+
+        .product-list {
+            border: 1px solid var(--border); border-radius: 10px;
+            overflow: hidden; max-height: 420px; overflow-y: auto;
+            background: white;
+        }
+
+        .product-list::-webkit-scrollbar { width: 6px; }
+        .product-list::-webkit-scrollbar-track { background: #f0faf9; }
+        .product-list::-webkit-scrollbar-thumb { background: #b0d4d2; border-radius: 3px; }
+
+        .product-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 9px 14px; border-bottom: 1px solid #f0f8f7;
+            cursor: pointer; transition: background 0.1s; user-select: none;
+        }
+
+        .product-row:last-child { border-bottom: none; }
+        .product-row:hover { background: #f5fdfb; }
+        .product-row.selected { background: #eaf7f5; }
+
+        .product-row input[type="checkbox"] {
+            width: 16px; height: 16px; flex-shrink: 0;
+            accent-color: var(--green); cursor: pointer;
+        }
+
+        .product-row-name {
+            flex: 1; font-size: 13px; font-weight: 600;
+            color: var(--text); white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+
+        .product-row-code {
+            font-size: 12px; color: var(--muted);
+            font-family: monospace; white-space: nowrap;
+            background: #f0f8f7; padding: 2px 7px; border-radius: 4px;
+        }
+
+        .product-list-footer {
+            padding: 10px 14px; font-size: 12px; color: var(--muted);
+            text-align: center; background: #fafefe; border-top: 1px solid var(--border);
+        }
+
+        .no-results {
+            padding: 40px; text-align: center;
+            font-size: 14px; color: var(--muted);
+        }
+
+        /* ── PRINT ── */
+        @media print {
+            body   { background: white; font-family: Arial, sans-serif; }
+            header, .tab-bar { display: none !important; }
+            .settings-panel, .print-tip, .preview-topbar, .action-bar { display: none !important; }
+            .tab-panel { display: none !important; }
+            #panel-cetak { display: block !important; }
+            .container { margin: 0; padding: 0; max-width: none; }
+            .card { box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; }
+
+            #labels-grid {
+                display: grid !important;
+                background: transparent !important;
+                padding: 0 !important;
+                border-radius: 0 !important;
+                gap: 0 !important;
+                width: auto !important;
+            }
+
+            .label-item {
+                background: white !important;
+                border: none !important;
+                border-radius: 0 !important;
+                overflow: hidden !important;
+                padding: 0.6mm 1mm 0.4mm !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            .label-name  { font-size: 5pt !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
+            .label-price { font-size: 4.5pt !important; margin-top: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="auth-overlay" style="position:fixed;inset:0;background:#034543;z-index:9999;display:flex;align-items:center;justify-content:center">
+  <div id="auth-loading" style="text-align:center;color:#FFFBD5">
+    <div style="font-size:2rem;font-weight:800;margin-bottom:8px">harmoni</div>
+    <div style="opacity:.6;font-size:.9rem">Memuat...</div>
+  </div>
+  <div id="auth-no-login" style="display:none;background:white;border-radius:16px;padding:40px 32px;text-align:center;max-width:340px;width:90%">
+    <div style="font-size:2.5rem;margin-bottom:12px">🔐</div>
+    <div style="font-weight:700;font-size:1.1rem;margin-bottom:8px">Belum Login</div>
+    <div style="color:#6b7280;font-size:.88rem;margin-bottom:20px">Silakan login melalui Portal Harmoni terlebih dahulu.</div>
+    <a href="https://adhiitmuh.github.io/harmoni-indonesia/" style="display:inline-block;padding:10px 24px;background:#034543;color:white;border-radius:8px;font-weight:700;text-decoration:none">Ke Portal →</a>
+  </div>
+  <div id="auth-denied" style="display:none;background:white;border-radius:16px;padding:40px 32px;text-align:center;max-width:340px;width:90%">
+    <div style="font-size:2.5rem;margin-bottom:12px">🚫</div>
+    <div style="font-weight:700;font-size:1.1rem;margin-bottom:8px">Tidak Ada Akses</div>
+    <div style="color:#6b7280;font-size:.88rem;margin-bottom:20px">Akun Anda belum memiliki akses ke aplikasi ini. Hubungi admin untuk mendapatkan akses.</div>
+    <a href="https://adhiitmuh.github.io/harmoni-indonesia/" style="display:inline-block;padding:10px 24px;background:#034543;color:white;border-radius:8px;font-weight:700;text-decoration:none">Kembali ke Portal →</a>
+  </div>
+</div>
+
+<!-- ── Header ── -->
+<header>
+    <div class="logo">
+        harmoni
+        <span>Cetak Barcode</span>
+    </div>
+</header>
+
+<!-- ── Tabs ── -->
+<div class="tab-bar">
+    <button class="tab active" id="tab-upload" onclick="switchTab('upload')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9,15 12,12 15,15"/></svg>
+        Upload Data
+        <span class="tab-badge" id="badge-upload" style="display:none"></span>
+    </button>
+    <button class="tab disabled" id="tab-kolom" onclick="switchTab('kolom')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Pilih Kolom
+    </button>
+    <button class="tab disabled" id="tab-cetak" onclick="switchTab('cetak')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Preview &amp; Cetak
+        <span class="tab-badge" id="badge-cetak" style="display:none"></span>
+    </button>
+</div>
+
+<!-- ── Content ── -->
+<div class="container">
+
+    <!-- TAB: Upload -->
+    <div class="tab-panel active" id="panel-upload">
+        <div class="card">
+
+            <div class="saved-banner" id="saved-banner">
+                <div class="saved-info">
+                    <strong>✅ Data tersimpan</strong>
+                    <span id="saved-meta"></span><br>
+                    <small>Kamu bisa langsung lanjut tanpa upload ulang.</small>
+                </div>
+                <div class="saved-actions">
+                    <button class="btn btn-primary" onclick="loadSavedData()">Lanjutkan →</button>
+                    <button class="btn btn-ghost" onclick="clearSavedData()">🗑 Hapus</button>
+                </div>
+            </div>
+
+            <p class="card-title">Upload Data Produk</p>
+            <p class="card-sub">Upload file export dari Olsera. Bisa satu file, banyak file sekaligus, atau satu folder.</p>
+
+            <div class="upload-zone" id="upload-zone">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#034543" stroke-width="1.5" opacity="0.4">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14,2 14,8 20,8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/>
+                    <polyline points="9,15 12,12 15,15"/>
+                </svg>
+                <h2>Drag &amp; drop file di sini</h2>
+                <p>atau klik tombol di bawah</p>
+                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">Pilih File</button>
+                    <button class="btn btn-outline" onclick="document.getElementById('folder-input').click()">📁 Pilih Folder</button>
+                </div>
+                <input type="file" id="file-input" accept=".csv,.xlsx,.xls" multiple>
+                <input type="file" id="folder-input" webkitdirectory multiple>
+                <p style="margin-top:14px;font-size:12px;color:var(--muted);">CSV &amp; Excel (.xlsx/.xls) — bisa pilih banyak file atau satu folder sekaligus</p>
+            </div>
+
+            <div class="info-box">
+                <p>📋 Cara export dari Olsera:</p>
+                <ol>
+                    <li>Buka Olsera → menu <strong>Produk</strong></li>
+                    <li>Klik tombol <strong>Export</strong> atau ikon download</li>
+                    <li>Pilih format <strong>CSV atau Excel</strong>, simpan file-nya</li>
+                    <li>Upload file di sini — boleh beberapa file atau satu folder sekaligus</li>
+                </ol>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TAB: Kolom -->
+    <div class="tab-panel" id="panel-kolom">
+        <div class="card">
+            <p class="card-title">Pilih Kolom Data</p>
+            <p class="card-sub">
+                Ditemukan <strong id="row-count">0</strong> produk.
+                Tentukan kolom nama, barcode, dan harga (opsional).
+            </p>
+
+            <div class="col-config">
+                <div class="form-group">
+                    <label>Nama Produk <span style="color:#ef4444">*</span></label>
+                    <select id="col-name"><option value="">-- Pilih kolom --</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Barcode / Kode <span style="color:#ef4444">*</span></label>
+                    <select id="col-barcode"><option value="">-- Pilih kolom --</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Harga <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">(opsional)</span></label>
+                    <select id="col-price"><option value="">-- Tidak ditampilkan --</option></select>
+                    <p class="form-hint">Tampil di bawah barcode jika dipilih</p>
+                </div>
+            </div>
+
+            <p style="font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:600;">Preview 5 baris pertama:</p>
+            <div class="table-wrapper"><table id="preview-table"></table></div>
+
+            <div class="action-row">
+                <button class="btn btn-ghost" onclick="switchTab('upload')">← Upload</button>
+                <button class="btn btn-primary" onclick="goToCetak()">Lanjut: Pilih &amp; Cetak →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: Cetak (Pilih Produk + Barcode Preview) -->
+    <div class="tab-panel" id="panel-cetak">
+
+        <!-- Card 1: Pilih produk -->
+        <div class="card" style="margin-bottom:16px;">
+            <p class="card-title" style="margin-bottom:4px;">Pilih Produk yang Dicetak</p>
+            <p class="card-sub" style="margin-bottom:14px;">Cari berdasarkan nama atau kode SKU, centang yang mau dicetak.</p>
+
+            <div class="select-toolbar">
+                <div class="search-box">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#aac4c2" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="product-search" placeholder="Cari nama produk atau kode SKU..."
+                           oninput="filterProducts()">
+                </div>
+                <div class="select-actions">
+                    <span class="select-count" id="select-count">0 dipilih</span>
+                    <button class="btn btn-outline" style="padding:7px 14px;font-size:13px;" onclick="selectAllVisible()">Pilih Semua</button>
+                    <button class="btn btn-ghost"   style="padding:7px 14px;font-size:13px;" onclick="clearSelection()">Hapus Pilihan</button>
+                </div>
+            </div>
+
+            <!-- Filter kategori & varian (muncul otomatis kalau kolom ada) -->
+            <div id="filter-dropdowns" style="display:none;gap:10px;flex-wrap:wrap;margin-bottom:12px;"></div>
+
+            <div class="product-list" id="product-list"></div>
+            <div id="product-list-footer" class="product-list-footer" style="display:none;"></div>
+        </div>
+
+        <!-- Card 2: Pengaturan + barcode preview -->
+        <div class="card" id="preview-card">
+            <div class="preview-topbar">
+                <div>
+                    <p class="preview-title">Preview &amp; Cetak</p>
+                    <p class="preview-count" id="preview-count">Pilih produk di atas untuk melihat preview.</p>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    <button class="btn btn-ghost" onclick="switchTab('kolom')">← Kolom</button>
+                    <button class="btn btn-print" onclick="window.print()">🖨️ Cetak</button>
+                </div>
+            </div>
+
+            <div class="settings-panel">
+                <strong>⚙️ Pengaturan:</strong>
+                <div class="setting-group">
+                    <label>Ukuran label:</label>
+                    <input type="number" id="lbl-w" value="33" min="10" max="150" step="0.5" onchange="buildGrid()"> mm ×
+                    <input type="number" id="lbl-h" value="18" min="8"  max="150" step="0.5" onchange="buildGrid()"> mm
+                </div>
+                <div class="setting-divider"></div>
+                <div class="setting-group">
+                    <label>Kolom per baris:</label>
+                    <input type="number" id="cols-input" value="3" min="1" max="8" onchange="buildGrid()">
+                </div>
+            </div>
+
+            <div class="print-tip">
+                <span style="font-size:18px;line-height:1">⚠️</span>
+                <div>
+                    <strong>Cara print ke Postek C168:</strong> Di dialog print → pilih <strong>Postek C168</strong> →
+                    Paper Size <strong>Custom</strong> (lebar roll, misal 100mm) → Margins <strong>None</strong> → Print.
+                </div>
+            </div>
+
+            <div id="labels-grid"></div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    let csvData      = [];
+    let headers      = [];
+    let selectedRows = {}; // { idx: qty }  — plain object, key is string of index
+    let allSelectable = [];       // rows with valid barcode
+    let filteredRows  = [];       // currently shown in product list
+    let nameCol_g = '', barcodeCol_g = '', priceCol_g = '';
+
+    const STORAGE_KEY = 'barcode_app_v1';
+
+    // ── Tabs ─────────────────────────────────────────────────────
+    function switchTab(name) {
+        if (document.getElementById('tab-' + name).classList.contains('disabled')) return;
+
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+
+        document.getElementById('tab-' + name).classList.add('active');
+        document.getElementById('panel-' + name).classList.add('active');
+    }
+
+    function unlockTab(name) {
+        const el = document.getElementById('tab-' + name);
+        if (el) el.classList.remove('disabled');
+    }
+
+    function setBadge(tab, text) {
+        const b = document.getElementById('badge-' + tab);
+        if (!b) return;
+        if (text) { b.textContent = text; b.style.display = 'inline'; }
+        else b.style.display = 'none';
+    }
+
+    // ── On load ──────────────────────────────────────────────────
+    window.addEventListener('load', () => {
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+            if (saved?.data?.length && saved?.headers?.length) {
+                const banner = document.getElementById('saved-banner');
+                const meta   = document.getElementById('saved-meta');
+                const date   = new Date(saved.savedAt);
+                const ds     = date.toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+                meta.innerHTML = ` — <strong>${saved.data.length} produk</strong>, disimpan ${ds}`;
+                banner.classList.add('visible');
+            }
+        } catch (_) {}
+    });
+
+    function loadSavedData() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+            if (!saved?.data?.length) { alert('Data tersimpan tidak ditemukan.'); return; }
+            csvData = saved.data;
+            headers = saved.headers;
+            if (saved.cols) {
+                nameCol_g    = saved.cols.name    || '';
+                barcodeCol_g = saved.cols.barcode || '';
+                priceCol_g   = saved.cols.price   || '';
+            }
+            populateConfig(saved.cols);
+            unlockTab('kolom');
+            setBadge('upload', csvData.length + ' produk');
+            switchTab('kolom');
+        } catch (_) { alert('Gagal membaca data tersimpan.'); }
+    }
+
+    function clearSavedData() {
+        if (!confirm('Hapus data tersimpan? Kamu perlu upload CSV lagi nanti.')) return;
+        localStorage.removeItem(STORAGE_KEY);
+        document.getElementById('saved-banner').classList.remove('visible');
+    }
+
+    function saveToStorage(cols) {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                data: csvData, headers, cols, savedAt: Date.now()
+            }));
+        } catch (_) {}
+    }
+
+    // ── Upload ───────────────────────────────────────────────────
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput  = document.getElementById('file-input');
+
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e => {
+        e.preventDefault(); uploadZone.classList.remove('drag-over');
+        if (e.dataTransfer.files.length) processFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', e => {
+        if (e.target.files.length) processFiles(e.target.files);
+        e.target.value = '';
+    });
+    document.getElementById('folder-input').addEventListener('change', e => {
+        if (!e.target.files.length) return;
+        const supported = Array.from(e.target.files).filter(f => {
+            const ext = f.name.split('.').pop().toLowerCase();
+            return ['csv','xlsx','xls'].includes(ext);
+        });
+        if (!supported.length) { alert('Tidak ada file CSV atau Excel di folder tersebut.'); return; }
+        processFiles(supported);
+        e.target.value = '';
+    });
+
+    async function processFiles(fileList) {
+        const files = Array.from(fileList).slice(0, 10);
+        uploadZone.innerHTML = `<p style="color:var(--muted);font-size:14px;padding:20px 0;">⏳ Memproses ${files.length} file...</p>`;
+
+        const results = await Promise.all(files.map(parseOneFile));
+        const valid   = results.filter(Boolean);
+
+        if (!valid.length) {
+            alert('Tidak ada file yang berhasil dibaca.'); location.reload(); return;
+        }
+
+        // Merge headers
+        const mergedHeaders = [];
+        valid.forEach(r => r.headers.forEach(h => { if (!mergedHeaders.includes(h)) mergedHeaders.push(h); }));
+
+        // Merge rows
+        const mergedData = [];
+        valid.forEach(r => r.data.forEach(row => {
+            const obj = {};
+            mergedHeaders.forEach(h => { obj[h] = row[h] !== undefined ? row[h] : ''; });
+            mergedData.push(obj);
+        }));
+
+        csvData = mergedData;
+        headers = mergedHeaders;
+
+        unlockTab('kolom');
+        setBadge('upload', csvData.length + ' produk');
+        populateConfig(null);
+        switchTab('kolom');
+    }
+
+    function parseOneFile(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext === 'csv')             return parseCsv(file);
+        if (['xlsx','xls'].includes(ext)) return parseExcel(file);
+        return Promise.resolve(null);
+    }
+
+    function parseCsv(file) {
+        return new Promise(resolve => {
+            Papa.parse(file, {
+                header: true, skipEmptyLines: true,
+                complete(r) {
+                    if (!r.meta.fields?.length) { resolve(null); return; }
+                    resolve({ headers: r.meta.fields, data: r.data, name: file.name });
+                },
+                error() { resolve(null); }
+            });
+        });
+    }
+
+    function parseExcel(file) {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const wb   = XLSX.read(e.target.result, { type: 'array' });
+                    const ws   = wb.Sheets[wb.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+                    if (!json.length) { resolve(null); return; }
+                    const hdrs = Object.keys(json[0]);
+                    const data = json.map(row => {
+                        const obj = {};
+                        hdrs.forEach(h => { obj[h] = String(row[h] ?? ''); });
+                        return obj;
+                    });
+                    resolve({ headers: hdrs, data, name: file.name });
+                } catch (_) { resolve(null); }
+            };
+            reader.onerror = () => resolve(null);
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    // ── Config ───────────────────────────────────────────────────
+    function populateConfig(savedCols) {
+        document.getElementById('row-count').textContent = csvData.length.toLocaleString('id-ID');
+
+        const sName    = document.getElementById('col-name');
+        const sBarcode = document.getElementById('col-barcode');
+        const sPrice   = document.getElementById('col-price');
+
+        sName.innerHTML    = '<option value="">-- Pilih kolom --</option>';
+        sBarcode.innerHTML = '<option value="">-- Pilih kolom --</option>';
+        sPrice.innerHTML   = '<option value="">-- Tidak ditampilkan --</option>';
+
+        headers.forEach(h => {
+            const o = `<option value="${esc(h)}">${esc(h)}</option>`;
+            sName.innerHTML += o; sBarcode.innerHTML += o; sPrice.innerHTML += o;
+        });
+
+        if (savedCols) {
+            if (savedCols.name)    sName.value    = savedCols.name;
+            if (savedCols.barcode) sBarcode.value = savedCols.barcode;
+            if (savedCols.price)   sPrice.value   = savedCols.price;
+        } else {
+            const nameKw    = ['nama','name','produk','product','item','barang','description'];
+            const barcodeKw = ['barcode','kode','sku','code','upc','ean'];
+            const priceKw   = ['harga','price','jual','sell','retail'];
+            headers.forEach(h => {
+                const l = h.toLowerCase();
+                if (!sName.value    && nameKw.some(k => l.includes(k)))    sName.value    = h;
+                if (!sBarcode.value && barcodeKw.some(k => l.includes(k))) sBarcode.value = h;
+                if (!sPrice.value   && priceKw.some(k => l.includes(k)))   sPrice.value   = h;
+            });
+        }
+
+        let html = '<thead><tr>';
+        headers.forEach(h => { html += `<th>${esc(h)}</th>`; });
+        html += '</tr></thead><tbody>';
+        csvData.slice(0,5).forEach(row => {
+            html += '<tr>';
+            headers.forEach(h => { html += `<td title="${esc(row[h]||'')}">${esc(row[h]||'')}</td>`; });
+            html += '</tr>';
+        });
+        document.getElementById('preview-table').innerHTML = html + '</tbody>';
+    }
+
+    // ── Go to Cetak tab ───────────────────────────────────────────
+    function goToCetak() {
+        const nameCol    = document.getElementById('col-name').value;
+        const barcodeCol = document.getElementById('col-barcode').value;
+        const priceCol   = document.getElementById('col-price').value;
+
+        if (!nameCol)    { alert('Pilih kolom nama produk.'); return; }
+        if (!barcodeCol) { alert('Pilih kolom barcode.'); return; }
+
+        nameCol_g    = nameCol;
+        barcodeCol_g = barcodeCol;
+        priceCol_g   = priceCol;
+        saveToStorage({ name: nameCol, barcode: barcodeCol, price: priceCol });
+
+        allSelectable = csvData.filter(row => {
+            const v = row[barcodeCol];
+            return v != null && String(v).trim() !== '';
+        });
+
+        selectedRows = {};
+        document.getElementById('product-search').value = '';
+
+        // Build category & variant filter options
+        buildFilterDropdowns();
+
+        unlockTab('cetak');
+        switchTab('cetak');
+        filterProducts();
+        buildGrid();
+    }
+
+    // ── Filter dropdowns (kategori & varian) ─────────────────────
+    let categoryCol_g = '';
+    let variantCol_g  = '';
+
+    function buildFilterDropdowns() {
+        // Detect category and variant columns from headers
+        const catKw = ['category','kategori'];
+        const varKw = ['variant','varian','variant_label','variant_names','varian_label'];
+
+        categoryCol_g = headers.find(h => catKw.some(k => h.toLowerCase().includes(k))) || '';
+        variantCol_g  = headers.find(h => varKw.some(k => h.toLowerCase() === k)) ||
+                        headers.find(h => varKw.some(k => h.toLowerCase().includes(k))) || '';
+
+        const toolbar = document.getElementById('filter-dropdowns');
+        if (!toolbar) return;
+
+        let html = '';
+
+        if (categoryCol_g) {
+            const cats = [...new Set(allSelectable.map(r => String(r[categoryCol_g] || '').trim()).filter(Boolean))].sort();
+            html += `<select id="filter-cat" onchange="filterProducts()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'Raleway',sans-serif;background:white;color:var(--text);">
+                        <option value="">Semua Kategori</option>
+                        ${cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+                     </select>`;
+        }
+
+        if (variantCol_g) {
+            const vars = [...new Set(allSelectable.map(r => String(r[variantCol_g] || '').trim()).filter(Boolean))].sort();
+            html += `<select id="filter-var" onchange="filterProducts()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'Raleway',sans-serif;background:white;color:var(--text);">
+                        <option value="">Semua Varian</option>
+                        ${vars.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('')}
+                     </select>`;
+        }
+
+        toolbar.innerHTML = html;
+        toolbar.style.display = html ? 'flex' : 'none';
+    }
+
+    // ── Product filter & render ───────────────────────────────────
+    const MAX_SHOW = 300;
+
+    function filterProducts() {
+        const q    = document.getElementById('product-search').value.trim().toLowerCase();
+        const cat  = document.getElementById('filter-cat')?.value  || '';
+        const vari = document.getElementById('filter-var')?.value  || '';
+
+        filteredRows = allSelectable.filter(row => {
+            if (q) {
+                const name = String(row[nameCol_g]    || '').toLowerCase();
+                const code = String(row[barcodeCol_g] || '').toLowerCase();
+                if (!name.includes(q) && !code.includes(q)) return false;
+            }
+            if (cat  && String(row[categoryCol_g] || '').trim() !== cat)  return false;
+            if (vari && String(row[variantCol_g]  || '').trim() !== vari) return false;
+            return true;
+        });
+
+        renderProductList();
+    }
+
+    function renderProductList() {
+        const list    = document.getElementById('product-list');
+        const footer  = document.getElementById('product-list-footer');
+        const showing = filteredRows.slice(0, MAX_SHOW);
+
+        if (!showing.length) {
+            list.innerHTML = `<div class="no-results">Tidak ada produk ditemukan.</div>`;
+            footer.style.display = 'none';
+            updateSelectCount();
+            return;
+        }
+
+        list.innerHTML = showing.map(row => {
+            const idx     = allSelectable.indexOf(row);
+            const checked = idx in selectedRows;
+            const qty     = selectedRows[idx] || 1;
+            const name    = esc(String(row[nameCol_g] || '').trim());
+            const code    = esc(String(row[barcodeCol_g] || '').trim());
+            const extra   = [
+                categoryCol_g ? String(row[categoryCol_g] || '') : '',
+                variantCol_g  ? String(row[variantCol_g]  || '') : ''
+            ].filter(Boolean).join(' · ');
+
+            return `
+                <div class="product-row ${checked ? 'selected' : ''}" onclick="toggleRow(${idx}, this)">
+                    <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation();toggleRow(${idx},this.closest('.product-row'))">
+                    <div style="flex:1;min-width:0;">
+                        <div class="product-row-name">${name}</div>
+                        ${extra ? `<div style="font-size:11px;color:var(--muted);margin-top:1px;">${esc(extra)}</div>` : ''}
+                    </div>
+                    <span class="product-row-code">${code}</span>
+                    <div onclick="event.stopPropagation();" style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                        <span style="font-size:11px;color:var(--muted);font-weight:600;">Jml:</span>
+                        <input type="number" value="${qty}" min="1" max="999"
+                            ${checked ? '' : 'disabled'}
+                            style="width:52px;padding:4px 6px;border:1.5px solid ${checked ? 'var(--border)' : '#e8e8e8'};
+                                   border-radius:6px;font-size:13px;font-family:'Raleway',sans-serif;
+                                   text-align:center;background:${checked ? 'white' : '#f5f5f5'};
+                                   color:${checked ? 'var(--text)' : '#bbb'};"
+                            onchange="updateQty(${idx}, this)"
+                            onclick="event.stopPropagation();">
+                    </div>
+                </div>`;
+        }).join('');
+
+        if (filteredRows.length > MAX_SHOW) {
+            footer.style.display = 'block';
+            footer.textContent = `Menampilkan ${MAX_SHOW} dari ${filteredRows.length} hasil — persempit dengan pencarian atau filter.`;
+        } else {
+            footer.style.display = filteredRows.length < allSelectable.length ? 'block' : 'none';
+            if (footer.style.display === 'block')
+                footer.textContent = `${filteredRows.length} hasil ditemukan dari ${allSelectable.length} produk.`;
+        }
+
+        updateSelectCount();
+    }
+
+    function toggleRow(idx, rowEl) {
+        if (idx in selectedRows) {
+            delete selectedRows[idx];
+            rowEl.classList.remove('selected');
+            rowEl.querySelector('input[type="checkbox"]').checked = false;
+            const numInput = rowEl.querySelector('input[type="number"]');
+            if (numInput) { numInput.disabled = true; numInput.style.background = '#f5f5f5'; numInput.style.color = '#bbb'; numInput.style.borderColor = '#e8e8e8'; }
+        } else {
+            const defaultQty = 1;
+            selectedRows[idx] = defaultQty;
+            rowEl.classList.add('selected');
+            rowEl.querySelector('input[type="checkbox"]').checked = true;
+            const numInput = rowEl.querySelector('input[type="number"]');
+            if (numInput) { numInput.disabled = false; numInput.value = defaultQty; numInput.style.background = 'white'; numInput.style.color = 'var(--text)'; numInput.style.borderColor = 'var(--border)'; }
+        }
+        updateSelectCount();
+        buildGrid();
+    }
+
+    function updateQty(idx, input) {
+        const qty = Math.max(1, parseInt(input.value) || 1);
+        input.value = qty;
+        if (idx in selectedRows) {
+            selectedRows[idx] = qty;
+            updateSelectCount();
+            buildGrid();
+        }
+    }
+
+    function selectAllVisible() {
+        filteredRows.slice(0, MAX_SHOW).forEach(row => {
+            const idx = allSelectable.indexOf(row);
+            if (!(idx in selectedRows)) selectedRows[idx] = 1;
+        });
+        renderProductList();
+        buildGrid();
+    }
+
+    function clearSelection() {
+        selectedRows = {};
+        renderProductList();
+        buildGrid();
+    }
+
+    function updateSelectCount() {
+        const items  = Object.keys(selectedRows).length;
+        const total  = Object.values(selectedRows).reduce((s, q) => s + q, 0);
+        const el     = document.getElementById('select-count');
+        el.textContent = items === 0 ? '0 dipilih' : `${items} produk · ${total} label`;
+        setBadge('cetak', items > 0 ? total : null);
+    }
+
+    function refresh() { buildGrid(); }
+
+    function buildGrid() {
+        const nameCol    = nameCol_g;
+        const barcodeCol = barcodeCol_g;
+        const priceCol   = priceCol_g;
+        const cols       = Math.max(1, parseInt(document.getElementById('cols-input').value)   || 3);
+        const copies     = 1; // per-item qty now handled in selectedRows Map
+        const lblW       = parseFloat(document.getElementById('lbl-w').value) || 33;
+        const lblH       = parseFloat(document.getElementById('lbl-h').value) || 18;
+
+        if (!nameCol || !barcodeCol) return;
+
+        // Only selected rows, with per-item qty
+        const valid = [];
+        allSelectable.forEach((row, idx) => {
+            if (idx in selectedRows) {
+                valid.push({ row, qty: selectedRows[idx] || 1 });
+            }
+        });
+
+        const totalLabels = valid.reduce((s, v) => s + v.qty, 0);
+        document.getElementById('preview-count').textContent = valid.length === 0
+            ? 'Centang produk di atas untuk melihat preview.'
+            : `${valid.length} produk dipilih · ${totalLabels} label total — ${cols} per baris`;
+
+        setBadge('cetak', totalLabels > 0 ? totalLabels : null);
+        applyPrintStyle(lblW, lblH, cols);
+
+        const grid    = document.getElementById('labels-grid');
+        grid.innerHTML = '';
+
+        const screenW = Math.round(lblW * 3.78 * 1.5);
+        const screenH = Math.round(lblH * 3.78 * 1.5);
+        grid.style.gridTemplateColumns = `repeat(${cols}, ${screenW}px)`;
+
+        let idx = 0;
+        valid.forEach(({ row, qty }) => {
+            const name  = String(row[nameCol] || '').trim();
+            const code  = String(row[barcodeCol]).trim();
+            const price = priceCol ? String(row[priceCol] || '').trim() : '';
+            const fmt   = detectFormat(code);
+
+            for (let c = 0; c < qty; c++) {
+                const svgId = `bc-${idx++}`;
+                const div   = document.createElement('div');
+                div.className = 'label-item';
+                div.style.width  = screenW + 'px';
+                div.style.height = screenH + 'px';
+                div.innerHTML = `
+                    <div class="label-name">${esc(name)}</div>
+                    <div class="label-barcode"><svg id="${svgId}"></svg></div>
+                    ${price ? `<div class="label-price">${fmtPrice(price, priceCol)}</div>` : ''}
+                `;
+                grid.appendChild(div);
+                renderBarcode(svgId, code, fmt);
+            }
+        });
+    }
+
+    let printStyleEl = null;
+
+    function applyPrintStyle(w, h, cols) {
+        if (!printStyleEl) {
+            printStyleEl = document.createElement('style');
+            document.head.appendChild(printStyleEl);
+        }
+        const rollW = w * cols;
+        printStyleEl.textContent = `
+            @media print {
+                @page { size: ${rollW}mm auto; margin: 0; }
+                #labels-grid {
+                    grid-template-columns: repeat(${cols}, ${w}mm) !important;
+                    width: ${rollW}mm !important;
+                }
+                .label-item { width: ${w}mm !important; height: ${h}mm !important; }
+            }
+        `;
+    }
+
+    function renderBarcode(id, value, format) {
+        const opts = { format, width:1, height:28, displayValue:true, fontSize:8, margin:2, textMargin:1 };
+        try { JsBarcode(`#${id}`, value, opts); }
+        catch (_) {
+            try { JsBarcode(`#${id}`, value, { ...opts, format:'CODE128' }); }
+            catch (_2) {
+                const el = document.getElementById(id);
+                if (el) el.outerHTML = `<div class="label-error">⚠ ${esc(value)}</div>`;
+            }
+        }
+    }
+
+    function detectFormat(v) {
+        const s = v.replace(/\s/g,'');
+        if (/^\d{13}$/.test(s)) return 'EAN13';
+        if (/^\d{8}$/.test(s))  return 'EAN8';
+        return 'CODE128';
+    }
+
+    function fmtPrice(raw, col) {
+        const num = parseFloat(String(raw).replace(/[^0-9.]/g,''));
+        if (!isNaN(num) && col && ['harga','price','jual','sell'].some(k => col.toLowerCase().includes(k)))
+            return 'Rp ' + num.toLocaleString('id-ID');
+        return esc(raw);
+    }
+
+    function esc(text) {
+        const d = document.createElement('div');
+        d.appendChild(document.createTextNode(String(text)));
+        return d.innerHTML;
+    }
+</script>
+
+<script>
+const _fbCfg = {
+  apiKey:            'AIzaSyA9V5Lw40pDeAWeQKijYCkdvnag8AlEe74',
+  authDomain:        'harmoni-indonesia.firebaseapp.com',
+  projectId:         'harmoni-indonesia',
+  storageBucket:     'harmoni-indonesia.firebasestorage.app',
+  messagingSenderId: '825719884876',
+  appId:             '1:825719884876:web:a8fd78d382e0f98cf6b8e9'
+};
+const _app = firebase.apps.find(a => a.name === 'harmoni-auth') || firebase.initializeApp(_fbCfg, 'harmoni-auth');
+
+_app.auth().onAuthStateChanged(async user => {
+  const overlay   = document.getElementById('auth-overlay');
+  const elLoading = document.getElementById('auth-loading');
+  const elNoLogin = document.getElementById('auth-no-login');
+  const elDenied  = document.getElementById('auth-denied');
+
+  if (!user) {
+    elLoading.style.display = 'none';
+    elNoLogin.style.display = 'block';
+    return;
+  }
+  try {
+    const snap    = await _app.firestore().collection('users').doc(user.uid).get();
+    const data    = snap.exists ? snap.data() : null;
+    const isOwner = data?.role === 'owner';
+    const appData = data?.apps?.barcode_printer;
+
+    if (!data?.aktif || (!isOwner && !appData?.akses)) {
+      elLoading.style.display = 'none';
+      elDenied.style.display  = 'block';
+      return;
+    }
+    overlay.style.display = 'none';
+  } catch(e) {
+    elLoading.style.display = 'none';
+    elDenied.style.display  = 'block';
+  }
+});
+</script>
+</body>
+</html>
