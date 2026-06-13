@@ -412,6 +412,18 @@
             font-family: Arial, sans-serif;
         }
 
+        .label-variant {
+            font-size: 9px;
+            font-weight: 500;
+            color: #475569;
+            text-align: center;
+            line-height: 1.2;
+            word-break: break-word;
+            max-width: 100%;
+            margin-bottom: 1px;
+            font-family: Arial, sans-serif;
+        }
+
         .label-barcode { display: flex; justify-content: center; width: 100%; }
         .label-barcode svg { max-width: 100%; height: auto; }
 
@@ -540,8 +552,9 @@
                 break-inside: avoid !important;
             }
 
-            .label-name  { font-size: 5pt !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
-            .label-price { font-size: 4.5pt !important; margin-top: 0 !important; }
+            .label-name    { font-size: 5pt !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
+            .label-variant { font-size: 4pt !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
+            .label-price   { font-size: 4.5pt !important; margin-top: 0 !important; }
         }
     </style>
 </head>
@@ -1210,12 +1223,14 @@
         const screenH = Math.round(lblH * 3.78 * 1.5);
         grid.style.gridTemplateColumns = `repeat(${cols}, ${screenW}px)`;
 
+        const variantCol = variantCol_g;
         let idx = 0;
         valid.forEach(({ row, qty }) => {
-            const name  = String(row[nameCol] || '').trim();
-            const code  = String(row[barcodeCol]).trim();
-            const price = priceCol ? String(row[priceCol] || '').trim() : '';
-            const fmt   = detectFormat(code);
+            const name    = String(row[nameCol] || '').trim();
+            const code    = String(row[barcodeCol]).trim();
+            const price   = priceCol   ? String(row[priceCol]   || '').trim() : '';
+            const variant = variantCol ? String(row[variantCol] || '').trim() : '';
+            const fmt     = detectFormat(code);
 
             for (let c = 0; c < qty; c++) {
                 const svgId = `bc-${idx++}`;
@@ -1225,6 +1240,7 @@
                 div.style.height = screenH + 'px';
                 div.innerHTML = `
                     <div class="label-name">${esc(name)}</div>
+                    ${variant ? `<div class="label-variant">${esc(variant)}</div>` : ''}
                     <div class="label-barcode"><svg id="${svgId}"></svg></div>
                     ${price ? `<div class="label-price">${fmtPrice(price, priceCol)}</div>` : ''}
                 `;
