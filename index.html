@@ -1229,8 +1229,9 @@
             const name    = String(row[nameCol] || '').trim();
             const code    = String(row[barcodeCol]).trim();
             const price   = priceCol   ? String(row[priceCol]   || '').trim() : '';
-            const variant = variantCol ? String(row[variantCol] || '').trim() : '';
-            const fmt     = detectFormat(code);
+            const variant     = variantCol ? String(row[variantCol] || '').trim() : '';
+            const showVariant = variant && !name.toLowerCase().includes(variant.toLowerCase());
+            const fmt         = detectFormat(code);
 
             for (let c = 0; c < qty; c++) {
                 const svgId = `bc-${idx++}`;
@@ -1240,7 +1241,7 @@
                 div.style.height = screenH + 'px';
                 div.innerHTML = `
                     <div class="label-name">${esc(name)}</div>
-                    ${variant ? `<div class="label-variant">${esc(variant)}</div>` : ''}
+                    ${showVariant ? `<div class="label-variant">${esc(variant)}</div>` : ''}
                     <div class="label-barcode"><svg id="${svgId}"></svg></div>
                     ${price ? `<div class="label-price">${fmtPrice(price, priceCol)}</div>` : ''}
                 `;
