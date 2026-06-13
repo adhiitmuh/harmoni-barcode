@@ -819,7 +819,35 @@
     window.addEventListener('load', () => {
         try {
             const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-            if (saved?.data?.length && saved?.headers?.length) {
+            if (!saved?.data?.length || !saved?.headers?.length) return;
+
+            csvData = saved.data;
+            headers = saved.headers;
+
+            if (saved.cols?.name && saved.cols?.barcode) {
+                // Data lengkap — langsung restore ke tab Cetak
+                nameCol_g    = saved.cols.name    || '';
+                barcodeCol_g = saved.cols.barcode || '';
+                priceCol_g   = saved.cols.price   || '';
+                populateConfig(saved.cols);
+
+                allSelectable = csvData.filter(row => {
+                    const v = row[barcodeCol_g];
+                    return v != null && String(v).trim() !== '';
+                });
+
+                labelVisibleCols_g = {};
+                buildFilterDropdowns();
+                buildLabelFieldToggles();
+
+                unlockTab('kolom');
+                unlockTab('cetak');
+                setBadge('upload', csvData.length + ' produk');
+                filterProducts();
+                buildGrid();
+                switchTab('cetak');
+            } else {
+                // Data ada tapi kolom belum dipilih — tampil banner seperti biasa
                 const banner = document.getElementById('saved-banner');
                 const meta   = document.getElementById('saved-meta');
                 const date   = new Date(saved.savedAt);
