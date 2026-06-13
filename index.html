@@ -424,6 +424,18 @@
             font-family: Arial, sans-serif;
         }
 
+        .label-extra {
+            font-size: 9px;
+            font-weight: 400;
+            color: #475569;
+            text-align: center;
+            line-height: 1.2;
+            word-break: break-word;
+            max-width: 100%;
+            margin-bottom: 1px;
+            font-family: Arial, sans-serif;
+        }
+
         .label-barcode { display: flex; justify-content: center; width: 100%; }
         .label-barcode svg { max-width: 100%; height: auto; }
 
@@ -554,6 +566,7 @@
 
             .label-name    { font-size: 5pt !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
             .label-variant { font-size: 4pt !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
+            .label-extra   { font-size: 4pt !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
             .label-price   { font-size: 4.5pt !important; margin-top: 0 !important; }
         }
     </style>
@@ -746,6 +759,11 @@
                     <label>Kolom per baris:</label>
                     <input type="number" id="cols-input" value="3" min="1" max="8" onchange="buildGrid()">
                 </div>
+                <div class="setting-divider"></div>
+                <div class="setting-group" id="label-fields-group" style="display:none;flex-wrap:wrap;align-items:flex-start;gap:8px;">
+                    <label style="white-space:nowrap;align-self:center;">Tampilkan di label:</label>
+                    <div id="label-fields-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+                </div>
             </div>
 
             <div class="print-tip">
@@ -770,6 +788,7 @@
     let allSelectable = [];       // rows with valid barcode
     let filteredRows  = [];       // currently shown in product list
     let nameCol_g = '', barcodeCol_g = '', priceCol_g = '';
+    let labelVisibleCols_g = {};
 
     const STORAGE_KEY = 'barcode_app_v1';
 
@@ -1007,14 +1026,54 @@
         });
 
         selectedRows = {};
+        labelVisibleCols_g = {};
         document.getElementById('product-search').value = '';
 
         // Build category & variant filter options
         buildFilterDropdowns();
+        buildLabelFieldToggles();
 
         unlockTab('cetak');
         switchTab('cetak');
         filterProducts();
+        buildGrid();
+    }
+
+    // ── Label field toggles ────────────────────────────────────────
+    function buildLabelFieldToggles() {
+        const box = document.getElementById('label-fields-checkboxes');
+        const grp = document.getElementById('label-fields-group');
+        if (!box || !grp || !headers.length) return;
+
+        const cols = headers.filter(h => h !== barcodeCol_g);
+        cols.forEach(h => {
+            if (!(h in labelVisibleCols_g)) {
+                labelVisibleCols_g[h] = (h === nameCol_g || h === variantCol_g || h === priceCol_g);
+            }
+        });
+
+        box.innerHTML = cols.map((h, i) => {
+            const on = !!labelVisibleCols_g[h];
+            return `<label onclick="toggleLabelField(${i},this)" style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:4px 10px;border:1.5px solid ${on ? 'var(--green)' : 'var(--border)'};border-radius:20px;background:${on ? '#edfaf8' : 'white'};color:${on ? 'var(--green)' : 'var(--muted)'};transition:all 0.15s;user-select:none;font-family:'Raleway',sans-serif;">
+                <input type="checkbox" style="display:none;" ${on ? 'checked' : ''}>
+                <span class="lf-icon">${on ? '✓' : '+'}</span>${esc(h)}
+            </label>`;
+        }).join('');
+
+        grp.style.display = cols.length ? '' : 'none';
+    }
+
+    function toggleLabelField(idx, labelEl) {
+        const col = headers.filter(h => h !== barcodeCol_g)[idx];
+        if (!col) return;
+        const cb = labelEl.querySelector('input[type=checkbox]');
+        const on = !cb.checked;
+        cb.checked = on;
+        labelVisibleCols_g[col] = on;
+        labelEl.style.borderColor = on ? 'var(--green)' : 'var(--border)';
+        labelEl.style.background  = on ? '#edfaf8' : 'white';
+        labelEl.style.color       = on ? 'var(--green)' : 'var(--muted)';
+        labelEl.querySelector('.lf-icon').textContent = on ? '✓' : '+';
         buildGrid();
     }
 
@@ -1224,14 +1283,23 @@
         grid.style.gridTemplateColumns = `repeat(${cols}, ${screenW}px)`;
 
         const variantCol = variantCol_g;
+        const vis        = labelVisibleCols_g;
         let idx = 0;
         valid.forEach(({ row, qty }) => {
             const name    = String(row[nameCol] || '').trim();
             const code    = String(row[barcodeCol]).trim();
             const price   = priceCol   ? String(row[priceCol]   || '').trim() : '';
-            const variant     = variantCol ? String(row[variantCol] || '').trim() : '';
-            const showVariant = variant && !name.toLowerCase().includes(variant.toLowerCase());
-            const fmt         = detectFormat(code);
+            const variant = variantCol ? String(row[variantCol] || '').trim() : '';
+            const nameHidden  = vis[nameCol] === false;
+            const showVariant = variantCol && vis[variantCol] !== false && variant &&
+                                (nameHidden || !name.toLowerCase().includes(variant.toLowerCase()));
+            const fmt = detectFormat(code);
+
+            // Extra columns: any other checked col besides name/barcode/price/variant
+            const extraLines = headers
+                .filter(h => h !== barcodeCol && h !== nameCol && h !== priceCol && h !== variantCol && vis[h])
+                .map(h => String(row[h] || '').trim())
+                .filter(Boolean);
 
             for (let c = 0; c < qty; c++) {
                 const svgId = `bc-${idx++}`;
@@ -1240,10 +1308,11 @@
                 div.style.width  = screenW + 'px';
                 div.style.height = screenH + 'px';
                 div.innerHTML = `
-                    <div class="label-name">${esc(name)}</div>
-                    ${showVariant ? `<div class="label-variant">${esc(variant)}</div>` : ''}
+                    ${!nameHidden ? `<div class="label-name">${esc(name)}</div>` : ''}
+                    ${showVariant  ? `<div class="label-variant">${esc(variant)}</div>` : ''}
+                    ${extraLines.map(t => `<div class="label-extra">${esc(t)}</div>`).join('')}
                     <div class="label-barcode"><svg id="${svgId}"></svg></div>
-                    ${price ? `<div class="label-price">${fmtPrice(price, priceCol)}</div>` : ''}
+                    ${price && vis[priceCol] !== false ? `<div class="label-price">${fmtPrice(price, priceCol)}</div>` : ''}
                 `;
                 grid.appendChild(div);
                 renderBarcode(svgId, code, fmt);
