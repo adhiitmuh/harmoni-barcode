@@ -348,10 +348,78 @@
             background: #fffbdc;
             border: 1px solid #e8e4a8;
             border-radius: 10px;
-            margin-bottom: 18px;
+            margin-bottom: 10px;
             font-size: 13px;
             color: #6b6400;
             line-height: 1.6;
+        }
+
+        /* ── Printer guide ── */
+        .guide-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--green);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0 0 14px 0;
+            font-family: 'Raleway', sans-serif;
+        }
+
+        .guide-toggle:hover { text-decoration: underline; }
+
+        .guide-panel {
+            display: none;
+            background: #f7fef9;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 18px;
+            font-size: 13px;
+            color: var(--text);
+            line-height: 1.7;
+        }
+
+        .guide-panel.open { display: block; }
+
+        .guide-step {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .guide-step:last-child { margin-bottom: 0; }
+
+        .guide-num {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            background: var(--green);
+            color: var(--beige);
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1px;
+        }
+
+        .guide-step strong { color: var(--green); display: block; margin-bottom: 2px; }
+        .guide-step ul { padding-left: 16px; margin: 4px 0 0; color: var(--muted); }
+        .guide-step ul li { margin-bottom: 2px; }
+        .guide-warn {
+            display: inline-block;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 12px;
+            color: #856404;
+            margin-top: 6px;
         }
 
         /* ── Action bar ── */
@@ -769,8 +837,51 @@
             <div class="print-tip">
                 <span style="font-size:18px;line-height:1">⚠️</span>
                 <div>
-                    <strong>Cara print ke Postek C168:</strong> Di dialog print → pilih <strong>Postek C168</strong> →
-                    Paper Size <strong>Custom</strong> (lebar roll, misal 100mm) → Margins <strong>None</strong> → Print.
+                    <strong>Cara print ke Postek C168:</strong> Pilih printer <strong>Postek C168</strong> → Paper Size <strong>Custom</strong> (lebar roll, misal 100mm) → Margins <strong>None</strong> → Print.
+                </div>
+            </div>
+
+            <button class="guide-toggle" onclick="toggleGuide()">
+                <span id="guide-arrow">▶</span> Panduan setup printer Postek C168
+            </button>
+
+            <div class="guide-panel" id="guide-panel">
+                <div class="guide-step">
+                    <div class="guide-num">1</div>
+                    <div>
+                        <strong>Download driver (Seagull)</strong>
+                        <ul>
+                            <li>Buka <strong>postek.com.cn</strong> → Support → Downloads</li>
+                            <li>Pilih model <strong>C168</strong> → download <strong>Seagull driver</strong> untuk Windows</li>
+                            <li>Atau cari di Google: <em>Postek C168 Seagull driver download</em></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-num">2</div>
+                    <div>
+                        <strong>Install driver (Seagull Driver Wizard)</strong>
+                        <ul>
+                            <li>Pastikan printer <strong>sudah nyala</strong> dan kabel <strong>USB sudah terpasang</strong> ke komputer <em>sebelum</em> buka wizard</li>
+                            <li>Pilih koneksi <strong>USB</strong> → wizard akan <strong>otomatis lanjut</strong> saat printer terdeteksi</li>
+                            <li>Jangan klik Next manual — tunggu wizard maju sendiri</li>
+                        </ul>
+                        <span class="guide-warn">⚠ Tombol Next greyed out? Artinya printer belum terdeteksi. Cek kabel USB dan pastikan printer nyala.</span>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-num">3</div>
+                    <div>
+                        <strong>Setting dialog print (Chrome/Edge)</strong>
+                        <ul>
+                            <li>Klik tombol <strong>🖨️ Cetak</strong> di atas</li>
+                            <li>Pilih printer: <strong>Postek C168</strong></li>
+                            <li>Klik <strong>More settings</strong> → Paper size → <strong>Custom</strong></li>
+                            <li>Masukkan lebar roll (misal <strong>100mm</strong>) dan biarkan tinggi auto</li>
+                            <li>Margins → <strong>None</strong></li>
+                            <li>Klik <strong>Print</strong></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
@@ -791,6 +902,7 @@
     let labelVisibleCols_g = {};
 
     const STORAGE_KEY = 'barcode_app_v1';
+    const PRINT_KEY   = 'barcode_print_settings_v1';
 
     // ── Tabs ─────────────────────────────────────────────────────
     function switchTab(name) {
@@ -837,6 +949,7 @@
                 });
 
                 labelVisibleCols_g = {};
+                restorePrintSettings();
                 buildFilterDropdowns();
                 buildLabelFieldToggles();
 
@@ -888,6 +1001,32 @@
                 data: csvData, headers, cols, savedAt: Date.now()
             }));
         } catch (_) {}
+    }
+
+    function savePrintSettings() {
+        try {
+            const w    = parseFloat(document.getElementById('lbl-w')?.value)    || 33;
+            const h    = parseFloat(document.getElementById('lbl-h')?.value)    || 18;
+            const cols = parseInt(document.getElementById('cols-input')?.value) || 3;
+            localStorage.setItem(PRINT_KEY, JSON.stringify({ w, h, cols }));
+        } catch (_) {}
+    }
+
+    function restorePrintSettings() {
+        try {
+            const ps = JSON.parse(localStorage.getItem(PRINT_KEY));
+            if (!ps) return;
+            if (ps.w)    document.getElementById('lbl-w').value    = ps.w;
+            if (ps.h)    document.getElementById('lbl-h').value    = ps.h;
+            if (ps.cols) document.getElementById('cols-input').value = ps.cols;
+        } catch (_) {}
+    }
+
+    function toggleGuide() {
+        const panel = document.getElementById('guide-panel');
+        const arrow = document.getElementById('guide-arrow');
+        const open  = panel.classList.toggle('open');
+        arrow.textContent = open ? '▼' : '▶';
     }
 
     // ── Upload ───────────────────────────────────────────────────
@@ -1284,6 +1423,8 @@
         const copies     = 1; // per-item qty now handled in selectedRows Map
         const lblW       = parseFloat(document.getElementById('lbl-w').value) || 33;
         const lblH       = parseFloat(document.getElementById('lbl-h').value) || 18;
+
+        savePrintSettings();
 
         if (!nameCol || !barcodeCol) return;
 
