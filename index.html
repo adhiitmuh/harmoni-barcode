@@ -461,10 +461,11 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 6px 8px 4px;
+            justify-content: flex-start;
+            padding: 5px 8px 4px;
             overflow: hidden;
             flex-shrink: 0;
+            gap: 1px;
         }
 
         .label-name {
@@ -476,8 +477,8 @@
             line-height: 1.2;
             word-break: break-word;
             max-width: 100%;
-            margin-bottom: 1px;
             font-family: Arial, sans-serif;
+            flex-shrink: 0;
         }
 
         .label-variant {
@@ -488,8 +489,8 @@
             line-height: 1.2;
             word-break: break-word;
             max-width: 100%;
-            margin-bottom: 1px;
             font-family: Arial, sans-serif;
+            flex-shrink: 0;
         }
 
         .label-extra {
@@ -500,19 +501,19 @@
             line-height: 1.2;
             word-break: break-word;
             max-width: 100%;
-            margin-bottom: 1px;
             font-family: Arial, sans-serif;
+            flex-shrink: 0;
         }
 
-        .label-barcode { display: flex; justify-content: center; width: 100%; }
-        .label-barcode svg { max-width: 100%; height: auto; }
+        .label-barcode { display: flex; justify-content: center; align-items: center; width: 100%; flex: 1; }
+        .label-barcode svg { max-width: 100%; height: auto; display: block; }
 
         .label-price {
             font-size: 10px;
             font-weight: 700;
             color: #0f172a;
-            margin-top: 1px;
             font-family: Arial, sans-serif;
+            flex-shrink: 0;
         }
 
         .label-error { font-size: 10px; color: #ef4444; text-align: center; }
@@ -624,19 +625,22 @@
                 border: none !important;
                 border-radius: 0 !important;
                 overflow: hidden !important;
-                padding: 0.6mm 1mm 0.4mm !important;
+                padding: 0.5mm 1mm 0.4mm !important;
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                justify-content: center !important;
+                justify-content: flex-start !important;
+                gap: 0.3mm !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
             }
 
-            .label-name    { font-size: 5pt !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
-            .label-variant { font-size: 4pt !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
-            .label-extra   { font-size: 4pt !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
-            .label-price   { font-size: 4.5pt !important; margin-top: 0 !important; }
+            .label-barcode { flex: 1 !important; align-items: center !important; }
+
+            .label-name    { font-size: 5pt !important; line-height: 1.2 !important; margin: 0 !important; }
+            .label-variant { font-size: 4pt !important; line-height: 1.2 !important; margin: 0 !important; }
+            .label-extra   { font-size: 4pt !important; line-height: 1.2 !important; margin: 0 !important; }
+            .label-price   { font-size: 4.5pt !important; margin: 0 !important; }
         }
     </style>
 </head>
