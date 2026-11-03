@@ -259,7 +259,15 @@
             margin-bottom: 20px;
         }
 
-        @media(max-width:640px) { .col-config { grid-template-columns: 1fr; } }
+        @media(max-width:640px) {
+            .col-config { grid-template-columns: 1fr; }
+            /* HP: header & tab lebih ringkas, tab bisa digeser, halaman tidak tergeser ke samping */
+            header { padding-left: 14px !important; padding-right: 14px !important; }
+            .tab-bar { padding: 0 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+            .tab-bar::-webkit-scrollbar { display: none; }
+            .tab { padding: 11px 12px; white-space: nowrap; flex-shrink: 0; font-size: 13px; }
+            input:not([type=checkbox]):not([type=radio]), select, textarea { font-size: 16px; }
+        }
 
         .form-group label {
             display: block;
